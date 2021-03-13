@@ -28,11 +28,13 @@ def parse_time(filename):
     return start_time, end_time
 
 
-def read_inventory():
-    inv = None
-    inv_path = here / ".." / "inventories" / "c3s-cmip6" / "c3s-cmip6_files_latest.yml"
-    with open(inv_path) as fin:
-        inv = yaml.load(fin, Loader=yaml.SafeLoader)
+def load_inventory(path):
+    inv_path = Path(path).absolute()
+    try:
+        with open(inv_path) as fin:
+            inv = yaml.load(fin, Loader=yaml.SafeLoader)
+    except Exception as e:
+        raise click.ClickException(f"Could not load inventory: {inv_path}")
     return inv
 
 
@@ -76,18 +78,21 @@ def build_catalog(inventory):
                         columns[13]: f'{item["path"]}/{filename}',
                     }
                     entries.append(entry)
-        except Exception as e:
-            raise click.ClickException(f"filename={filename} - message={e}")
-    click.echo("Build Dataframe ...")
+        except Exception:
+            raise click.ClickException("Could not build catalog")
     df = pd.DataFrame(entries)
     return df[columns]
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.option('-i', '--inventory',
+              default="../inventories/c3s-cmip6/c3s-cmip6_files_latest.yml",
+              show_default=True,
+              help='Path to inventory file.')
 @click.option('-z', '--compress', is_flag=True, help='Compress the resulting catalog with gzip.')
-def cli(compress):
-    click.echo("Loading inventory ...")
-    inv = read_inventory()
+def cli(inventory, compress):
+    click.echo(f"Loading inventory {inventory} ...")
+    inv = load_inventory(inventory)
     project = inv[0]["project"]
     click.echo(f"Building catalog for {project} ...")
     df = build_catalog(inv)
