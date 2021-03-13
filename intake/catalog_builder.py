@@ -2,11 +2,30 @@ import click
 import os
 import yaml
 from pathlib import Path
+from datetime import datetime
 from tqdm import tqdm
 
 import pandas as pd
 
 here = Path(os.path.dirname(__file__))
+
+
+def parse_time(filename):
+    time_part = filename.split("_")[-1].split(".nc")[0]
+    if "-" not in time_part:
+        return None, None
+    start, end = time_part.split("-")
+    # start year
+    year = start[:4]
+    month = start[4:6] or "01"
+    day = start[6:8] or "01"
+    start_time = datetime(int(year), int(month), int(day)).strftime('%Y-%m-%dT12:00:00')
+    # end year
+    year = end[:4]
+    month = end[4:6] or "12"
+    day = end[6:8] or "31"
+    end_time = datetime(int(year), int(month), int(day)).strftime('%Y-%m-%dT12:00:00')
+    return start_time, end_time
 
 
 def read_inventory():
@@ -31,12 +50,15 @@ def build_catalog(inventory):
         "variable_id",
         "grid_label",
         "version",
+        "start_time",
+        "end_time",
         "path",
     ]
     for item in tqdm(inventory):
         try:
             if "path" in item:
                 for filename in item["files"]:
+                    start_time, end_time = parse_time(filename)
                     entry = {
                         columns[0]: item["ds_id"],
                         columns[1]: item["facets"]["mip_era"],
@@ -49,29 +71,38 @@ def build_catalog(inventory):
                         columns[8]: item["facets"]["variable_id"],
                         columns[9]: item["facets"]["grid_label"],
                         columns[10]: item["facets"]["version"],
-                        columns[11]: f'{item["path"]}/{filename}',
+                        columns[11]: start_time,
+                        columns[12]: end_time,
+                        columns[13]: f'{item["path"]}/{filename}',
                     }
                     entries.append(entry)
-        except ValueError:
-            click.echo(f"Error: {item}")
+        except Exception as e:
+            raise click.ClickException(f"filename={filename} - message={e}")
     click.echo("Build Dataframe ...")
     df = pd.DataFrame(entries)
     return df[columns]
 
 
-def main():
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.option('-z', '--compress', is_flag=True, help='Compress the resulting catalog with gzip.')
+def cli(compress):
     click.echo("Loading inventory ...")
     inv = read_inventory()
-    click.echo("Building catalog ...")
+    project = inv[0]["project"]
+    click.echo(f"Building catalog for {project} ...")
     df = build_catalog(inv)
-    cat_name = here / "catalogs" / "c3s-cmip6_latest.csv.gz"
-    df.to_csv(cat_name, index=False, compression="gzip")
-    click.echo(f"Catalog written: {cat_name}")
-
-
-@click.command(context_settings=dict(help_option_names=['-h', '--help']))
-def cli():
-    main()
+    last_updated = datetime.now().utcnow()
+    timestamp = last_updated.strftime('%Y-%m-%dT%H:%M:%SZ')
+    version = last_updated.strftime('v%Y%m%d')
+    cat_name = f"{project}_{version}.csv"
+    if compress:
+        cat_name += ".gz"
+        compression = "gzip"
+    else:
+        compression = None
+    cat_path = here / "catalogs" / cat_name
+    df.to_csv(cat_path, index=False, compression=compression)
+    click.echo(f"Catalog written: {cat_path}")
 
 
 if __name__ == '__main__':
