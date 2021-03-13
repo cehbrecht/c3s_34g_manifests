@@ -28,6 +28,13 @@ def parse_time(filename):
     return start_time, end_time
 
 
+def parse_bbox(latitude, longitude):
+    min_y, max_y = latitude.split()
+    min_x, max_x = longitude.split()
+    bbox = f"{float(min_x)}, {float(min_y)}, {float(max_x)}, {float(max_y)}"
+    return bbox
+
+
 def load_inventory(path):
     inv_path = Path(path).absolute()
     try:
@@ -54,6 +61,7 @@ def build_catalog(inventory):
         "version",
         "start_time",
         "end_time",
+        "bbox",
         "path",
     ]
     for item in tqdm(inventory):
@@ -61,6 +69,8 @@ def build_catalog(inventory):
             if "path" in item:
                 for filename in item["files"]:
                     start_time, end_time = parse_time(filename)
+                    bbox = parse_bbox(item["latitude"], item["longitude"])
+                    path = f'{item["path"]}/{filename}'
                     entry = {
                         columns[0]: item["ds_id"],
                         columns[1]: item["facets"]["mip_era"],
@@ -75,7 +85,8 @@ def build_catalog(inventory):
                         columns[10]: item["facets"]["version"],
                         columns[11]: start_time,
                         columns[12]: end_time,
-                        columns[13]: f'{item["path"]}/{filename}',
+                        columns[13]: bbox,
+                        columns[14]: path,
                     }
                     entries.append(entry)
         except Exception:
