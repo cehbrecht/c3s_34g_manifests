@@ -1,7 +1,7 @@
 sources:
   c3s-cmip6:
     args:
-      urlpath: '{{ CATALOG_DIR }}/c3s-cmip6_v20210313.csv.gz'
+      urlpath: simplecache::'{{ CATALOG_DIR }}/c3s-cmip6_v20210313.csv.gz'
     description: c3s-cmip6 datasets
     driver: intake.source.csv.CSVSource
     metadata:
