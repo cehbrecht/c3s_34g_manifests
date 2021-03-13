@@ -45,7 +45,7 @@ def load_inventory(path):
     return inv
 
 
-def build_catalog(inventory):
+def build_c3s_cmip6_catalog(inventory):
     entries = []
     columns = [
         "ds_id",
@@ -95,6 +95,19 @@ def build_catalog(inventory):
     return df[columns]
 
 
+def write_catalog(df, project, last_updated, compress):
+    version = last_updated.strftime('v%Y%m%d')
+    cat_name = f"{project}_{version}.csv"
+    if compress:
+        cat_name += ".gz"
+        compression = "gzip"
+    else:
+        compression = None
+    cat_path = here / "catalogs" / cat_name
+    df.to_csv(cat_path, index=False, compression=compression)
+    return cat_path
+
+
 def update_catalog(project, path, origin, last_updated):
     cat_path = here / "catalogs" / "c3s.yaml"
     with open(cat_path) as fin:
@@ -118,18 +131,12 @@ def cli(inventory, compress):
     click.echo(f"Loading inventory {inventory} ...")
     inv = load_inventory(inventory)
     project = inv[0]["project"]
+    if project != 'c3s-cmip6':
+        click.ClickException(f"Catalog for project {project} is not implemented.")
     click.echo(f"Building catalog for {project} ...")
-    df = build_catalog(inv)
+    df = build_c3s_cmip6_catalog(inv)
     last_updated = datetime.now().utcnow()
-    version = last_updated.strftime('v%Y%m%d')
-    cat_name = f"{project}_{version}.csv"
-    if compress:
-        cat_name += ".gz"
-        compression = "gzip"
-    else:
-        compression = None
-    cat_path = here / "catalogs" / cat_name
-    df.to_csv(cat_path, index=False, compression=compression)
+    cat_path = write_catalog(df, project, last_updated, compress)
     click.echo(f"Catalog written: {cat_path}")
     intake_cat_path = update_catalog(project, cat_path, inventory, last_updated)
     click.echo(f"Intake Catalog updated: {intake_cat_path}")

@@ -5,5 +5,5 @@ sources:
     description: c3s-cmip6 datasets
     driver: intake.source.csv.CSVSource
     metadata:
-      last_updated: '2021-03-13T19:16:05Z'
+      last_updated: '2021-03-13T20:51:33Z'
       origin_urlpath: ../inventories/c3s-cmip6/c3s-cmip6_files_latest.yml
