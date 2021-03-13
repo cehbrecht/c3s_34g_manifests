@@ -112,7 +112,7 @@ def update_catalog(project, path, origin, last_updated):
     cat_path = here / "catalogs" / "c3s.yaml"
     with open(cat_path) as fin:
         cat = yaml.load(fin, Loader=yaml.SafeLoader)
-        cat["sources"][project]["args"]["urlpath"] = "{{ CATALOG_DIR }}" + path.name
+        cat["sources"][project]["args"]["urlpath"] = "{{ CATALOG_DIR }}/" + path.name
         timestamp = last_updated.strftime('%Y-%m-%dT%H:%M:%SZ')
         cat["sources"][project]["metadata"]["last_updated"] = timestamp
         cat["sources"][project]["metadata"]["origin_urlpath"] = origin
