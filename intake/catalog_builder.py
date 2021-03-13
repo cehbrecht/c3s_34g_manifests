@@ -84,6 +84,19 @@ def build_catalog(inventory):
     return df[columns]
 
 
+def update_catalog(project, path, origin, last_updated):
+    cat_path = here / "catalogs" / "c3s.yaml"
+    with open(cat_path) as fin:
+        cat = yaml.load(fin, Loader=yaml.SafeLoader)
+        cat["sources"][project]["args"]["urlpath"] = "{{ CATALOG_DIR }}" + path.name
+        timestamp = last_updated.strftime('%Y-%m-%dT%H:%M:%SZ')
+        cat["sources"][project]["metadata"]["last_updated"] = timestamp
+        cat["sources"][project]["metadata"]["origin_urlpath"] = origin
+        with open(cat_path, "w") as fout:
+            yaml.dump(cat, fout)
+    return cat_path
+
+
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('-i', '--inventory',
               default="../inventories/c3s-cmip6/c3s-cmip6_files_latest.yml",
@@ -97,7 +110,6 @@ def cli(inventory, compress):
     click.echo(f"Building catalog for {project} ...")
     df = build_catalog(inv)
     last_updated = datetime.now().utcnow()
-    timestamp = last_updated.strftime('%Y-%m-%dT%H:%M:%SZ')
     version = last_updated.strftime('v%Y%m%d')
     cat_name = f"{project}_{version}.csv"
     if compress:
@@ -108,6 +120,8 @@ def cli(inventory, compress):
     cat_path = here / "catalogs" / cat_name
     df.to_csv(cat_path, index=False, compression=compression)
     click.echo(f"Catalog written: {cat_path}")
+    intake_cat_path = update_catalog(project, cat_path, inventory, last_updated)
+    click.echo(f"Intake Catalog updated: {intake_cat_path}")
 
 
 if __name__ == '__main__':
