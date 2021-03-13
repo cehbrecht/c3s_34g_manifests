@@ -1,3 +1,4 @@
+import click
 import os
 import yaml
 from pathlib import Path
@@ -18,31 +19,60 @@ def read_inventory():
 
 def build_catalog(inventory):
     entries = []
+    columns = [
+        "ds_id",
+        "mip_era",
+        "activity_id",
+        "institution_id",
+        "source_id",
+        "experiment_id",
+        "member_id",
+        "table_id",
+        "variable_id",
+        "grid_label",
+        "version",
+        "path",
+    ]
     for item in tqdm(inventory):
         try:
             if "path" in item:
                 for filename in item["files"]:
                     entry = {
-                        "ds_id": item["ds_id"],
-                        "path": f'{item["path"]}/{filename}',
+                        columns[0]: item["ds_id"],
+                        columns[1]: item["facets"]["mip_era"],
+                        columns[2]: item["facets"]["activity_id"],
+                        columns[3]: item["facets"]["institution_id"],
+                        columns[4]: item["facets"]["source_id"],
+                        columns[5]: item["facets"]["experiment_id"],
+                        columns[6]: item["facets"]["member_id"],
+                        columns[7]: item["facets"]["table_id"],
+                        columns[8]: item["facets"]["variable_id"],
+                        columns[9]: item["facets"]["grid_label"],
+                        columns[10]: item["facets"]["version"],
+                        columns[11]: f'{item["path"]}/{filename}',
                     }
                     entries.append(entry)
         except ValueError:
-            print(f"Error: {item}")
-    print("Build Dataframe ...")
+            click.echo(f"Error: {item}")
+    click.echo("Build Dataframe ...")
     df = pd.DataFrame(entries)
-    columns = [
-        'ds_id',
-        'path',
-    ]
     return df[columns]
 
 
-if __name__ == '__main__':
-    print("Loading inventory ...")
+def main():
+    click.echo("Loading inventory ...")
     inv = read_inventory()
-    print("Building catalog ...")
+    click.echo("Building catalog ...")
     df = build_catalog(inv)
-    cat_name = here / "catalogs" / "c3s-cmip6_latest.csv"
-    df.to_csv(cat_name, index=False)
-    print(f"Catalog written: {cat_name}")
+    cat_name = here / "catalogs" / "c3s-cmip6_latest.csv.gz"
+    df.to_csv(cat_name, index=False, compression="gzip")
+    click.echo(f"Catalog written: {cat_name}")
+
+
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+def cli():
+    main()
+
+
+if __name__ == '__main__':
+    cli(obj={})
