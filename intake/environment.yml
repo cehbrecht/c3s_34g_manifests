@@ -1,0 +1,13 @@
+# conda env create -f environment.yml
+name: intake
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  # ui
+  - click
+  - tqdm
+  # intake
+  - intake
+  - pandas
